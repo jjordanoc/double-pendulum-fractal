@@ -11,7 +11,7 @@ contains
       real, parameter :: dt = 0.1
       integer iter; real y(5), E0
       character(len=*), parameter :: OUT_FILE = 'data.txt' ! Output file.
-      character (len=*), parameter :: format = '(6g24.16)'
+      character (len=*), parameter :: format = '(3g24.16)'
       real(real64), parameter :: PI=4.D0*DATAN(1.D0)
       integer, parameter :: iterations = 100000
 
@@ -45,8 +45,8 @@ contains
       call plt%set_colormap(map)
 
       ! Set the orientation of the plot
-      call plt%set_elevation(20.0d0)
-      call plt%set_azimuth(30.0d0)
+      call plt%set_elevation(90.0d0)
+      ! call plt%set_azimuth(30.0d0)
 
       ! Establish lighting
       ! call plt%set_use_lighting(.true.)
@@ -74,9 +74,6 @@ contains
             y(5) = 0.0 ! pht2 = 0
             !main evolution loop
             do iter = 0,iterations
-               ! output positions, errors in energy
-
-               ! write (1,format)  y(1), y(2), E0-energy(y), y(3)
                ! pendulum flips when angle is greater than pi in absolute value
                if (abs(y(2)) > PI .or. abs(y(3)) > PI) then
                   exit
@@ -86,7 +83,7 @@ contains
             th1_0(k) = th1_0_space(i)
             th2_0(k) = th2_0_space(j)
             tflip(k) = y(1)
-            write (1,*)  th1_0(k), th2_0(k), tflip(k)
+            write (1,format)  th1_0(k), th2_0(k), tflip(k)
             k = k + 1
             write (*,*) 'Final time: ', i, j, y(1)
          end do
