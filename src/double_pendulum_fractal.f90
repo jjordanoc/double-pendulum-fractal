@@ -19,11 +19,11 @@ contains
       integer(int32), parameter :: n = 25
 
       ! Local Variables
-      ! real(real64), dimension(n, n, 2), target :: space
-      real(real64), dimension(n) :: th1_0_space, th2_0_space
-      real(real64), dimension(n**2) :: th1_0, th2_0, tflip
-      type(plot_3d) :: plt
-      type(plot_data_3d) :: d1
+      real(real64), dimension(n, n, 2), target :: space
+      real(real64), pointer, dimension(:,:) :: th1_0, th2_0
+      real(real64), dimension(n, n) :: tflip
+      type(surface_plot) :: plt
+      type(surface_plot_data) :: d1
       class(plot_axis), pointer :: xAxis, yAxis, zAxis
       type(custom_colormap) :: map
       type(cmap) :: colors
@@ -36,20 +36,17 @@ contains
       call map%set_colormap(colors)
 
       ! Define the data
-      ! space = meshgrid(linspace(-3.0d0, 3.0d0, n), linspace(-3.0d0, 3.0d0, n))
-      th1_0_space = linspace(-3.0d0, 3.0d0, n)
-      th2_0_space = linspace(-3.0d0, 3.0d0, n)
+      space = meshgrid(linspace(-PI, PI, n), linspace(-PI, PI, n))
+      th1_0 => space(:,:,1)
+      th2_0 => space(:,:,2)
 
       ! Initialize the plot
       call plt%initialize(term=GNUPLOT_TERMINAL_QT)
       call plt%set_colormap(map)
 
       ! Set the orientation of the plot
-      call plt%set_elevation(90.0d0)
-      ! call plt%set_azimuth(30.0d0)
-
-      ! Establish lighting
-      ! call plt%set_use_lighting(.true.)
+      call plt%set_elevation(0.0d0)
+      call plt%set_azimuth(0.0d0)
 
       ! Define titles
       call plt%set_title("Double pendulum fractal")
@@ -68,8 +65,10 @@ contains
          do j = 1, n
             ! condiciones iniciales
             y(1) = 0.0 ! t = 0
-            y(2) = th1_0_space(i) ! th1 = th1_0
-            y(3) = th2_0_space(j) ! th2 = th2_0
+            y(2) = th1_0(i,j) ! th1 = th1_0
+            y(3) = th2_0(i,j)
+            ! y(2) = th1_0_space(i) ! th1 = th1_0
+            ! y(3) = th2_0_space(j) ! th2 = th2_0
             y(4) = 0.0 ! pth1 = 0
             y(5) = 0.0 ! pht2 = 0
             !main evolution loop
@@ -80,16 +79,15 @@ contains
                end if
                call gl8(y, dt)
             end do
-            th1_0(k) = th1_0_space(i)
-            th2_0(k) = th2_0_space(j)
-            tflip(k) = y(1)
-            write (1,format)  th1_0(k), th2_0(k), tflip(k)
-            k = k + 1
+            ! Surface plot
+            tflip(i,j) = y(1)
+            write (1,format)  th1_0(i,j), th2_0(i,j), tflip(i,j)
+            ! k = k + 1
             write (*,*) 'Final time: ', i, j, y(1)
          end do
       end do
-      call d1%define_data(th1_0, th2_0, log(tflip + 1))
-      ! call plt%set_use_map_view(.true.)
+      call d1%define_data(th1_0, th2_0, log(tflip + 0.001))
+      call plt%set_use_map_view(.true.)
       call plt%push(d1)
       call plt%draw()
       ! E0 = energy(y)
