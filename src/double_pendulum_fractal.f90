@@ -8,37 +8,38 @@ module double_pendulum_fractal
    public :: main_loop
 contains
    subroutine main_loop
+      logical, parameter :: read_from_file = .true.
       real, parameter :: dt = 0.1
       integer iter; real y(5), E0
-      character(len=*), parameter :: OUT_FILE = 'data.txt' ! Output file.
+      character(len=*), parameter :: IN_FILE = 'data100.txt' ! Input file.
+      character(len=*), parameter :: OUT_FILE = 'data100.txt' ! Output file.
       character (len=*), parameter :: format = '(3g24.16)'
       real(real64), parameter :: PI=4.D0*DATAN(1.D0)
       integer, parameter :: iterations = 100000
+      integer(int32), parameter :: n = 100
 
-      ! Parameters
-      integer(int32), parameter :: n = 25
-
-      ! Local Variables
-      real(real64), dimension(n, n, 2), target :: space
-      real(real64), pointer, dimension(:,:) :: th1_0, th2_0
-      real(real64), dimension(n, n) :: tflip
+      ! Plot Variables
       type(surface_plot) :: plt
       type(surface_plot_data) :: d1
       class(plot_axis), pointer :: xAxis, yAxis, zAxis
       type(custom_colormap) :: map
       type(cmap) :: colors
-      integer(int32) :: i, j, k
 
-      open (1, file=OUT_FILE, status='replace')
+      ! Problem variables
+      real(real64), dimension(n, n, 2), target :: space
+      real(real64), pointer, dimension(:,:) :: th1_0, th2_0
+      real(real64), dimension(n, n) :: tflip
+      integer(int32) :: i, j
 
+      if (read_from_file) then
+         open (1, file=OUT_FILE, status='old')
+      else
+         open (1, file=OUT_FILE, status='replace')
+      end if
+      
       ! Set up the colormap
-      call colors%set("glasgow", -8.0d0, 8.0d0)
+      call colors%set("glasgow", 0.0d0, 10.0d0)
       call map%set_colormap(colors)
-
-      ! Define the data
-      space = meshgrid(linspace(-PI, PI, n), linspace(-PI, PI, n))
-      th1_0 => space(:,:,1)
-      th2_0 => space(:,:,2)
 
       ! Initialize the plot
       call plt%initialize(term=GNUPLOT_TERMINAL_QT)
@@ -60,15 +61,17 @@ contains
       zAxis => plt%get_z_axis()
       call zAxis%set_title("Time to flip")
 
-      k = 1
+      ! Define the data
+      space = meshgrid(linspace(-PI, PI, n), linspace(-PI, PI, n))
+      th1_0 => space(:,:,1)
+      th2_0 => space(:,:,2)
+
       do i = 1, n
          do j = 1, n
             ! condiciones iniciales
             y(1) = 0.0 ! t = 0
             y(2) = th1_0(i,j) ! th1 = th1_0
-            y(3) = th2_0(i,j)
-            ! y(2) = th1_0_space(i) ! th1 = th1_0
-            ! y(3) = th2_0_space(j) ! th2 = th2_0
+            y(3) = th2_0(i,j) ! th2 = th2_0
             y(4) = 0.0 ! pth1 = 0
             y(5) = 0.0 ! pht2 = 0
             !main evolution loop
@@ -79,19 +82,16 @@ contains
                end if
                call gl8(y, dt)
             end do
-            ! Surface plot
             tflip(i,j) = y(1)
             write (1,format)  th1_0(i,j), th2_0(i,j), tflip(i,j)
-            ! k = k + 1
             write (*,*) 'Final time: ', i, j, y(1)
          end do
       end do
-      call d1%define_data(th1_0, th2_0, log(tflip + 0.001))
+      call d1%define_data(th1_0, th2_0, log(tflip + 1))
       call plt%set_use_map_view(.true.)
+      call plt%set_show_gridlines(.false.)
       call plt%push(d1)
       call plt%draw()
-      ! E0 = energy(y)
-
       close(1)
    end subroutine main_loop
 
@@ -111,12 +111,9 @@ contains
 
 ! equations of motion simple anharmonic oscillator
 
-   subroutine evalf(y, dydx)
-      real y(5), dydx(5)                       ! Do I change it?
-      !YES, here you put the odes to solve
-
+   subroutine evalf(y, dydx) ! Here you put the odes to solve
+      real y(5), dydx(5)   
       ! y = [t, th1, th2, pth1, pth2]
-      ! real, parameter :: m = 1.0, l = 1.0
       real, parameter :: m = 1.0, g = 9.81, l = 1.0
       real :: th1, th2, pth1, pth2
       real :: ml_2
