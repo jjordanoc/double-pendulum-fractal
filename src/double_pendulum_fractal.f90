@@ -11,7 +11,7 @@ contains
    subroutine main_loop
       logical, parameter :: read_from_file = .false.
       real(real128), parameter :: dt = 0.1
-      integer iter; real(real128) y(5), E0
+      integer iter; real(real128) y(5)
       real(real64), parameter :: PI=4.Q0*DATAN(1.D0)
       integer, parameter :: iterations = 100000
       integer(int32), parameter :: n = 500
@@ -57,7 +57,7 @@ contains
       space = meshgrid(linspace(-PI, PI, n), linspace(-PI, PI, n))
       th1_0 => space(:,:,1)
       th2_0 => space(:,:,2)
-      
+
       !$OMP PARALLEL PRIVATE(y, iter) SHARED(th1_0, th2_0, tflip)
       !$omp do
       do i = 1, n
@@ -87,16 +87,6 @@ contains
       call plt%push(d1)
       call plt%draw()
    end subroutine main_loop
-
-   ! function energy(vec)
-   !    real energy, vec(5)
-   !    ! H = p^2/2 + x^4/4
-   !    real, parameter :: m = 1.0, g = 9.81, l = 1.0
-   !    real :: th1, th2
-   !    th1 = vec(2)
-   !    th2 = vec(3)
-   !    energy = (-1.0/2.0)*m*g*l*(3*cos(th1)+cos(th2))
-   ! end function energy
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! implicit Gauss-Legendre methods; symplectic with arbitrary Hamiltonian, A-stable

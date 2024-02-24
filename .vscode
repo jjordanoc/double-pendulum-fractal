@@ -1,3 +1,0 @@
-{
-  "fortran.linter.includePaths": ["/usr/include/**", "${workspaceFolder}/include/**"]
-}

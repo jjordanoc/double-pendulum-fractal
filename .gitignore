@@ -2,3 +2,5 @@ venv
 *.txt
 plot.py
 PendulumFractal1.csv
+.DS_Store
+.vscode
