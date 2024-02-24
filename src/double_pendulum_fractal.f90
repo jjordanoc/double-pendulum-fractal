@@ -2,21 +2,19 @@ module double_pendulum_fractal
    use iso_fortran_env
    use fplot_core
    use forcolormap, only : colormaps_list
+   use omp_lib
    implicit none
    private
 
    public :: main_loop
 contains
    subroutine main_loop
-      logical, parameter :: read_from_file = .true.
-      real, parameter :: dt = 0.1
-      integer iter; real y(5), E0
-      character(len=*), parameter :: IN_FILE = 'data100.txt' ! Input file.
-      character(len=*), parameter :: OUT_FILE = 'data100.txt' ! Output file.
-      character (len=*), parameter :: format = '(3g24.16)'
-      real(real64), parameter :: PI=4.D0*DATAN(1.D0)
+      logical, parameter :: read_from_file = .false.
+      real(real128), parameter :: dt = 0.1
+      integer iter; real(real128) y(5), E0
+      real(real64), parameter :: PI=4.Q0*DATAN(1.D0)
       integer, parameter :: iterations = 100000
-      integer(int32), parameter :: n = 100
+      integer(int32), parameter :: n = 500
 
       ! Plot Variables
       type(surface_plot) :: plt
@@ -31,12 +29,6 @@ contains
       real(real64), dimension(n, n) :: tflip
       integer(int32) :: i, j
 
-      if (read_from_file) then
-         open (1, file=OUT_FILE, status='old')
-      else
-         open (1, file=OUT_FILE, status='replace')
-      end if
-      
       ! Set up the colormap
       call colors%set("glasgow", 0.0d0, 10.0d0)
       call map%set_colormap(colors)
@@ -65,10 +57,11 @@ contains
       space = meshgrid(linspace(-PI, PI, n), linspace(-PI, PI, n))
       th1_0 => space(:,:,1)
       th2_0 => space(:,:,2)
-
+      
+      !$OMP PARALLEL PRIVATE(y, iter) SHARED(th1_0, th2_0, tflip)
+      !$omp do
       do i = 1, n
          do j = 1, n
-            ! condiciones iniciales
             y(1) = 0.0 ! t = 0
             y(2) = th1_0(i,j) ! th1 = th1_0
             y(3) = th2_0(i,j) ! th2 = th2_0
@@ -83,40 +76,37 @@ contains
                call gl8(y, dt)
             end do
             tflip(i,j) = y(1)
-            write (1,format)  th1_0(i,j), th2_0(i,j), tflip(i,j)
             write (*,*) 'Final time: ', i, j, y(1)
          end do
       end do
+      !$OMP END DO
+      !$OMP END PARALLEL
       call d1%define_data(th1_0, th2_0, log(tflip + 1))
       call plt%set_use_map_view(.true.)
       call plt%set_show_gridlines(.false.)
       call plt%push(d1)
       call plt%draw()
-      close(1)
    end subroutine main_loop
 
-   function energy(vec)
-      real energy, vec(5)
-      ! H = p^2/2 + x^4/4
-      real, parameter :: m = 1.0, g = 9.81, l = 1.0
-      real :: th1, th2
-      th1 = vec(2)
-      th2 = vec(3)
-      energy = (-1.0/2.0)*m*g*l*(3*cos(th1)+cos(th2))
-   end function energy
+   ! function energy(vec)
+   !    real energy, vec(5)
+   !    ! H = p^2/2 + x^4/4
+   !    real, parameter :: m = 1.0, g = 9.81, l = 1.0
+   !    real :: th1, th2
+   !    th1 = vec(2)
+   !    th2 = vec(3)
+   !    energy = (-1.0/2.0)*m*g*l*(3*cos(th1)+cos(th2))
+   ! end function energy
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ! implicit Gauss-Legendre methods; symplectic with arbitrary Hamiltonian, A-stable
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! equations of motion simple anharmonic oscillator
-
    subroutine evalf(y, dydx) ! Here you put the odes to solve
-      real y(5), dydx(5)   
+      real(real128) y(5), dydx(5)
       ! y = [t, th1, th2, pth1, pth2]
-      real, parameter :: m = 1.0, g = 9.81, l = 1.0
-      real :: th1, th2, pth1, pth2
-      real :: ml_2
+      real(real128), parameter :: m = 1.0, g = 9.81, l = 1.0
+      real(real128) :: th1, th2, pth1, pth2
+      real(real128) :: ml_2
       ml_2 = m * l**2
       th1 = y(2)
       th2 = y(3)
@@ -141,12 +131,10 @@ contains
 ! only change n -> the number of equations
    subroutine gl8(y, dt)
       integer, parameter :: s = 4, n = 5
-      real y(n), g(n,s), dt; integer i, k, j
+      real(real128) y(n), g(n,s), dt; integer i, k, j
 
       ! Butcher tableau for 8th order Gauss-Legendre method
-
-      ! esta creando una matriz de sxs creando un array y luego reshapeandolo
-      real, parameter :: a(s,s) = reshape((/ &
+      real(real128), parameter :: a(s,s) = reshape((/ &
          0.869637112843634643432659873054998518Q-1, -0.266041800849987933133851304769531093Q-1, &
          0.126274626894047245150568805746180936Q-1, -0.355514968579568315691098184956958860Q-2, &
          0.188118117499868071650685545087171160Q0,   0.163036288715636535656734012694500148Q0,  &
@@ -155,7 +143,7 @@ contains
          0.163036288715636535656734012694500148Q0,  -0.141906949311411429641535704761714564Q-1, &
          0.177482572254522611843442956460569292Q0,   0.313445114741868346798411144814382203Q0,  &
          0.352676757516271864626853155865953406Q0,   0.869637112843634643432659873054998518Q-1 /), (/s,s/))
-      real, parameter ::   b(s) = (/ &
+      real(real128), parameter ::   b(s) = (/ &
          0.173927422568726928686531974610999704Q0,   0.326072577431273071313468025389000296Q0,  &
          0.326072577431273071313468025389000296Q0,   0.173927422568726928686531974610999704Q0  /)
 
